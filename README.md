@@ -138,6 +138,22 @@ This will:
 
 The script uses `inotifywait` for efficient file watching, or falls back to polling mode (checking every 5 seconds) if inotify is not available.
 
+**Watch mode in background (with logging):**
+```bash
+# Start watch mode in background
+./add_domain_suffix.sh --watch > /tmp/watch.log 2>&1 &
+WATCH_PID=$!
+echo "Watch process started (PID: $WATCH_PID)"
+
+# View logs
+tail -f /tmp/watch.log
+
+# Stop the watch process
+kill $WATCH_PID 2>/dev/null
+```
+
+This runs the watcher as a background process, logs output to `/tmp/watch.log`, and saves the PID for easy termination.
+
 ### Custom Domain Suffix
 
 ```bash
