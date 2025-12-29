@@ -18,17 +18,27 @@ A demonstration environment with a running DNSMasq server and a Python applicati
 
 ## Quick Start
 
-### 1. Start the DNSMasq Server
+### Option A: Start Everything (Recommended)
+
+Start DNSMasq with automatic domain-suffix generation:
+
+```bash
+docker-compose up -d dnsmasq domain-watcher
+```
+
+This will start:
+- **DNSMasq server** on port 53 (UDP/TCP) with Web UI on port 8080
+- **Domain watcher** that automatically generates `hosts.domain` when `hosts` changes
+
+### Option B: Manual Setup
+
+**1. Start the DNSMasq Server**
 
 ```bash
 docker-compose up -d dnsmasq
 ```
 
-This will start the DNSMasq server with:
-- DNS server on port 53 (UDP/TCP)
-- Web UI on port 8080
-
-### 2. Run the Hosts Manager
+**2. Run the Hosts Manager**
 
 Add custom hosts (Alex, Ben, Bob, Alice with random IPs):
 
@@ -42,17 +52,19 @@ Or run it directly with Python:
 sudo python3 hosts_manager.py
 ```
 
-### 3. Generate Domain-Suffixed Hosts (Optional)
+**3. Generate Domain-Suffixed Hosts**
 
-Create FQDN versions of your hosts (e.g., Alex.rafael.local):
-
+One-time generation:
 ```bash
 ./add_domain_suffix.sh
 ```
 
-This will create a `hosts.domain` file with domain-suffixed entries.
+Or run in watch mode for automatic regeneration:
+```bash
+./add_domain_suffix.sh --watch
+```
 
-### 4. Access the DNSMasq Web UI
+### Access the DNSMasq Web UI
 
 Open your browser and navigate to:
 ```
@@ -104,6 +116,7 @@ The `add_domain_suffix.sh` script creates fully qualified domain names (FQDNs) f
 
 ### Basic Usage
 
+**One-time generation:**
 ```bash
 ./add_domain_suffix.sh
 ```
@@ -111,6 +124,19 @@ The `add_domain_suffix.sh` script creates fully qualified domain names (FQDNs) f
 This reads `./hosts` and creates `./hosts.domain` with entries like:
 - `Alex` → `Alex.rafael.local`
 - `Ben` → `Ben.rafael.local`
+
+**Watch mode (auto-regenerate on changes):**
+```bash
+./add_domain_suffix.sh --watch
+```
+
+This will:
+1. Generate the initial `hosts.domain` file
+2. Watch for changes to the `hosts` file
+3. Automatically regenerate `hosts.domain` when changes are detected
+4. Run continuously until stopped with Ctrl+C
+
+The script uses `inotifywait` for efficient file watching, or falls back to polling mode (checking every 5 seconds) if inotify is not available.
 
 ### Custom Domain Suffix
 
@@ -139,11 +165,20 @@ Parameters:
 
 ### How It Works
 
+**One-time mode:**
 1. Script reads the hosts file line by line
 2. Finds entries with private IPs (192.168.x.x)
 3. Appends the domain suffix to each hostname
 4. Writes to a new file
 5. DNSMasq loads both files via `addn-hosts` directives
+
+**Watch mode:**
+1. Generates initial domain-suffixed hosts file
+2. Monitors the source hosts file for changes (using inotify or polling)
+3. Automatically regenerates the output file when changes are detected
+4. Logs each regeneration with timestamp
+
+This ensures your domain-suffixed hosts are always in sync with the original hosts file!
 
 ### Dual Resolution
 
@@ -251,7 +286,41 @@ Both files are shared with the DNSMasq container and loaded via `addn-hosts` dir
 - `hosts`: Shared hosts file (short names)
 - `hosts.domain`: Generated hosts file (FQDNs)
 
+## Managing Services
+
+### View Running Services
+
+```bash
+docker-compose ps
+```
+
+### View Logs
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f dnsmasq
+docker-compose logs -f domain-watcher
+```
+
+### Restart a Service
+
+```bash
+docker-compose restart dnsmasq
+docker-compose restart domain-watcher
+```
+
+### Stop a Specific Service
+
+```bash
+docker-compose stop domain-watcher
+```
+
 ## Stopping the Environment
+
+Stop all services:
 
 ```bash
 docker-compose down

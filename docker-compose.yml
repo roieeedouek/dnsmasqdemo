@@ -25,3 +25,16 @@ services:
       - dnsmasq
     stdin_open: true
     tty: true
+
+  domain-watcher:
+    image: bash:latest
+    container_name: domain-watcher
+    volumes:
+      - ./hosts:/app/hosts
+      - ./hosts.domain:/app/hosts.domain
+      - ./add_domain_suffix.sh:/app/add_domain_suffix.sh
+    working_dir: /app
+    command: ["bash", "/app/add_domain_suffix.sh", "--watch", "/app/hosts", ".rafael.local", "/app/hosts.domain"]
+    restart: unless-stopped
+    depends_on:
+      - dnsmasq
