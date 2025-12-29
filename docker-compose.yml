@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  dnsmasq:
+    image: jpillora/dnsmasq
+    container_name: dnsmasq-server
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8080:8080"  # Web UI
+    volumes:
+      - ./dnsmasq.conf:/etc/dnsmasq.conf
+      - ./hosts:/etc/hosts
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  hosts-manager:
+    build: .
+    container_name: hosts-manager
+    volumes:
+      - ./hosts:/etc/hosts
+    depends_on:
+      - dnsmasq
+    stdin_open: true
+    tty: true
