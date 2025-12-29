@@ -11,6 +11,7 @@ services:
     volumes:
       - ./dnsmasq.conf:/etc/dnsmasq.conf
       - ./hosts:/etc/hosts
+      - ./hosts.domain:/etc/hosts.domain
     cap_add:
       - NET_ADMIN
     restart: unless-stopped

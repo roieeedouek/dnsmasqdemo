@@ -7,6 +7,8 @@ A demonstration environment with a running DNSMasq server and a Python applicati
 - **DNSMasq Server**: Running in Docker with web UI
 - **Hosts Manager**: Python application to add custom DNS entries
 - **Auto-generated IPs**: Randomly assigns private IPs (192.168.x.x) to hostnames
+- **Domain Suffix Generator**: Bash script to create FQDN versions of hosts
+- **Dual Resolution**: Resolve hosts by short name OR fully qualified domain name
 - **Easy Setup**: Simple Docker Compose deployment
 
 ## Prerequisites
@@ -40,7 +42,17 @@ Or run it directly with Python:
 sudo python3 hosts_manager.py
 ```
 
-### 3. Access the DNSMasq Web UI
+### 3. Generate Domain-Suffixed Hosts (Optional)
+
+Create FQDN versions of your hosts (e.g., Alex.rafael.local):
+
+```bash
+./add_domain_suffix.sh
+```
+
+This will create a `hosts.domain` file with domain-suffixed entries.
+
+### 4. Access the DNSMasq Web UI
 
 Open your browser and navigate to:
 ```
@@ -86,6 +98,61 @@ manager.remove_host_entry('Alex')
 manager.backup_hosts()
 ```
 
+## Using the Domain Suffix Generator
+
+The `add_domain_suffix.sh` script creates fully qualified domain names (FQDNs) from your hosts.
+
+### Basic Usage
+
+```bash
+./add_domain_suffix.sh
+```
+
+This reads `./hosts` and creates `./hosts.domain` with entries like:
+- `Alex` → `Alex.rafael.local`
+- `Ben` → `Ben.rafael.local`
+
+### Custom Domain Suffix
+
+```bash
+./add_domain_suffix.sh ./hosts .mycompany.local ./hosts.custom
+```
+
+Parameters:
+1. Input hosts file (default: `./hosts`)
+2. Domain suffix (default: `.rafael.local`)
+3. Output file (default: `./hosts.domain`)
+
+### Example Output
+
+**Original (hosts):**
+```
+192.168.156.67	Alex
+192.168.209.164	Ben
+```
+
+**Generated (hosts.domain):**
+```
+192.168.156.67 Alex.rafael.local
+192.168.209.164 Ben.rafael.local
+```
+
+### How It Works
+
+1. Script reads the hosts file line by line
+2. Finds entries with private IPs (192.168.x.x)
+3. Appends the domain suffix to each hostname
+4. Writes to a new file
+5. DNSMasq loads both files via `addn-hosts` directives
+
+### Dual Resolution
+
+With both files configured, DNSMasq will resolve:
+- **Short names**: `Alex` → 192.168.156.67
+- **FQDNs**: `Alex.rafael.local` → 192.168.156.67
+
+Both resolve to the same IP!
+
 ## Testing DNS Resolution
 
 Once the hosts are added and DNSMasq is running, you can test DNS resolution:
@@ -93,19 +160,31 @@ Once the hosts are added and DNSMasq is running, you can test DNS resolution:
 ### Using dig
 
 ```bash
+# Short name
 dig @localhost Alex
+
+# FQDN
+dig @localhost Alex.rafael.local
 ```
 
 ### Using nslookup
 
 ```bash
+# Short name
 nslookup Alex localhost
+
+# FQDN
+nslookup Alex.rafael.local localhost
 ```
 
 ### Using host
 
 ```bash
+# Short name
 host Alex localhost
+
+# FQDN
+host Alex.rafael.local localhost
 ```
 
 ## Configuration
@@ -115,13 +194,16 @@ host Alex localhost
 The DNSMasq configuration is in `dnsmasq.conf`. Key settings:
 
 - **Upstream DNS**: Google DNS (8.8.8.8, 8.8.4.4)
-- **Additional Hosts**: Reads from `/etc/hosts`
+- **Additional Hosts**: Reads from `/etc/hosts` AND `/etc/hosts.domain`
 - **Cache Size**: 1000 entries
 - **Query Logging**: Enabled for debugging
 
-### Hosts File
+### Hosts Files
 
-The `hosts` file contains the DNS mappings. It's shared between the DNSMasq container and the hosts-manager.
+- **hosts**: Contains short name DNS mappings (Alex, Ben, etc.)
+- **hosts.domain**: Contains FQDN mappings (Alex.rafael.local, etc.)
+
+Both files are shared with the DNSMasq container and loaded via `addn-hosts` directives.
 
 ## Architecture
 
@@ -133,23 +215,30 @@ The `hosts` file contains the DNS mappings. It's shared between the DNSMasq cont
            │
            │ writes to
            ▼
-    ┌─────────────┐
-    │   hosts     │
-    │   file      │
-    └──────┬──────┘
-           │
-           │ reads from
-           ▼
-    ┌──────────────┐
-    │   dnsmasq    │
-    │   server     │
-    └──────────────┘
-           │
-           │ serves DNS
-           ▼
-    ┌──────────────┐
-    │   Clients    │
-    └──────────────┘
+    ┌─────────────┐         ┌──────────────────┐
+    │   hosts     │────────▶│ add_domain_      │
+    │   file      │         │ suffix.sh        │
+    └──────┬──────┘         └────────┬─────────┘
+           │                         │
+           │                         │ generates
+           │                         ▼
+           │                  ┌─────────────┐
+           │                  │ hosts.domain│
+           │                  └──────┬──────┘
+           │                         │
+           │ both read by            │
+           └────────┬────────────────┘
+                    ▼
+             ┌──────────────┐
+             │   dnsmasq    │
+             │   server     │
+             └──────┬───────┘
+                    │
+                    │ serves DNS
+                    ▼
+             ┌──────────────┐
+             │   Clients    │
+             └──────────────┘
 ```
 
 ## Files
@@ -158,7 +247,9 @@ The `hosts` file contains the DNS mappings. It's shared between the DNSMasq cont
 - `Dockerfile`: Container definition for hosts-manager
 - `dnsmasq.conf`: DNSMasq server configuration
 - `hosts_manager.py`: Python application for managing hosts
-- `hosts`: Shared hosts file
+- `add_domain_suffix.sh`: Bash script to generate FQDN hosts
+- `hosts`: Shared hosts file (short names)
+- `hosts.domain`: Generated hosts file (FQDNs)
 
 ## Stopping the Environment
 
