@@ -50,8 +50,8 @@ generate_hosts() {
         return 1
     fi
 
-    # Create output file (start fresh)
-    > "$OUTPUT_FILE"
+    # Buffer for output content
+    local output_buffer=""
 
     # Counter for processed entries
     local count=0
@@ -83,9 +83,9 @@ generate_hosts() {
                     new_hostnames="$new_hostnames $new_hostname"
                 done
 
-                # Write the new entry
+                # Add to buffer instead of writing directly
                 local new_line="$ip$new_hostnames"
-                echo "$new_line" >> "$OUTPUT_FILE"
+                output_buffer+="${new_line}"$'\n'
 
                 # Display what was added
                 if [ "$show_output" = "true" ]; then
@@ -98,6 +98,9 @@ generate_hosts() {
             skipped=$((skipped + 1))
         fi
     done < "$HOSTS_FILE"
+
+    # Write entire buffer to file in one atomic operation
+    echo -n "$output_buffer" > "$OUTPUT_FILE"
 
     if [ "$show_output" = "true" ]; then
         echo "----------------------------------------------"
