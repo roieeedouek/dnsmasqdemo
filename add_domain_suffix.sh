@@ -66,7 +66,6 @@ generate_hosts() {
     while IFS= read -r line || [ -n "$line" ]; do
         # Skip empty lines and comments
         if [ -z "$line" ] || [[ "$line" =~ ^[[:space:]]*# ]]; then
-            echo "$line" >> "$OUTPUT_FILE"
             continue
         fi
 
@@ -95,8 +94,7 @@ generate_hosts() {
                 count=$((count + 1))
             fi
         else
-            # Keep other entries as-is (localhost, etc.)
-            echo "$line" >> "$OUTPUT_FILE"
+            # Skip entries that don't match our IP ranges
             skipped=$((skipped + 1))
         fi
     done < "$HOSTS_FILE"
