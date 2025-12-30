@@ -70,8 +70,8 @@ generate_hosts() {
             continue
         fi
 
-        # Check if line contains an IP address (192.168.x.x range)
-        if [[ "$line" =~ ^192\.168\.[0-9]+\.[0-9]+ ]]; then
+        # Check if line contains an IP address (192.168.x.x or 235.x.x.x range)
+        if [[ "$line" =~ ^(192\.168|235)\.[0-9]+\.[0-9]+ ]]; then
             # Extract IP and hostname(s)
             local ip=$(echo "$line" | awk '{print $1}')
             local hostnames=$(echo "$line" | awk '{$1=""; print $0}' | sed 's/^[[:space:]]*//')
